@@ -68,17 +68,43 @@ function selectMode(mode) {
   }
 }
 
+let customWords = []; //stores uploaded words
+
+//file input listener
+document.getElementById("wordFile").addEventListener("change", function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = e.target.result;
+    //split by line or comma
+    customWords = text
+      .split(/\r?\n|,/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length > 0);
+    document.getElementById("message").textContent =
+      "Words loaded from file!";
+  };
+  reader.readAsText(file);
+});
+
 //start game
 function startGame(mode) {
   document.getElementById("schoolInput").style.display = "none";
   document.getElementById("gameArea").style.display = "block";
 
   if (mode === "school") {
-    let input = document.getElementById("schoolWords").value;
-    if (input.trim() !== "") {
-      chosenWord = pickRandomWord(input.split(","));
+    // priority: file → textbox → default
+    if (customWords.length > 0) {
+      chosenWord = pickRandomWord(customWords);
     } else {
-      chosenWord = pickRandomWord(defaultWords);
+      let input = document.getElementById("schoolWords").value;
+      if (input.trim() !== "") {
+        chosenWord = pickRandomWord(input.split(","));
+      } else {
+        chosenWord = pickRandomWord(defaultWords);
+      }
     }
   } else {
     chosenWord = pickRandomWord(defaultWords);
