@@ -67,8 +67,10 @@
       <p>Wrong guesses: <span id="wrongCount">0</span>/5</p>
 
       <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter">
-      <button onclick="guessLetter()">Guess</button>
+      <button id="guessBtn" onclick="guessLetter()">Guess</button>
       <button id="hintBtn" onclick="giveHint()" style="display:none;">Get Hint</button>
+      <button id="replayBtn" onclick="restartGame()" style="display:none;">Replay</button>
+      <button id="homeBtn" onclick="goHome()" style="display:none;">Home</button>
 
       <p id="message"></p>
     </div>
