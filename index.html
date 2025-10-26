@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What's That Word!</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      color: black;
+    }
+
+    /* canvas is the background */
+    #bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    /*UI sits on top (maybe change idk yet) */
+    #gameContainer {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 8px 15px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+
+  <div id="gameContainer">
+    <h1>What's That Word!</h1>
+
+    <!-- mode selection -->
+    <div id="modeSelect">
+      <p>Choose a mode:</p>
+      <button onclick="selectMode('school')">School</button>
+      <button onclick="selectMode('fun')">Fun</button>
+      <br>
+      <button onclick="window.location.href='instructions.html'">View Instructions</button>
+    </div>
+
+
+    <!-- school mode input -->
+    <div id="schoolInput" style="display:none;">
+      <p>Enter words separated by commas or upload a text file:</p>
+      <input type="text" id="schoolWords" placeholder="e.g. math,science,history">
+      <br><br>
+      <input type="file" id="wordFile" accept=".txt">
+      <br><br>
+      <button onclick="startGame('school')">Start School Mode</button>
+    </div>
+
+    <!-- game -->
+    <div id="gameArea" style="display:none;">
+      <p id="rules">Guess the word one letter at a time. You have 5 wrong tries.</p>
+      <p id="wordDisplay"></p>
+      <p>Wrong guesses: <span id="wrongCount">0</span>/5</p>
+
+      <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter">
+      <button id="guessBtn" onclick="guessLetter()">Guess</button>
+      <button id="hintBtn" onclick="giveHint()" style="display:none;">Get Hint</button>
+      <button id="replayBtn" onclick="restartGame()" style="display:none;">Replay</button>
+      <button id="homeBtn" onclick="goHome()" style="display:none;">Home</button>
+
+      <p id="message"></p>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
