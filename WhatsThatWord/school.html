@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What's That Word!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="gameContainer">
+    <h1>What's That Word!</h1>
+    <!-- school mode input -->
+    <div id="schoolInput">
+        <p>Enter words separated by commas or upload a text file:</p>
+        <ul>
+        <input type="text" id="schoolWords" placeholder="e.g. math,science,history">
+        <br><br>
+        <input type="file" id="wordFile" accept=".txt,.doc,.docx">
+        </ul>
+        <a>
+        <button id ="startSchoolBtn">Start School Mode</button>
+            <button id="blueButton" onclick = "location.href = 'index.html'">Go Back</button>
+        </a>
+
+    </div>
+
+</div>
+
+<script src="intro.js"></script>
+<script src="instructions.js"></script>
+
+<script>
+    let fileWordsText = "";
+    document.getElementById('wordFile').addEventListener('change', (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => fileWordsText = String(reader.result || "");
+        reader.readAsText(f);
+    });
+
+    function normalizeList(text) {
+        return Array.from(new Set(
+            (text || "").split(/[\n,]+/g).map(w => w.trim()).filter(Boolean)
+        ));
+    }
+
+    document.getElementById('startSchoolBtn').addEventListener('click', () => {
+        const typed = document.getElementById('schoolWords').value || "";
+        const list = [...normalizeList(typed), ...normalizeList(fileWordsText)];
+        localStorage.setItem('customWords', JSON.stringify(list));
+        location.href = 'game.html?mode=school';
+    });
+</script>
+
+</body>
+</html>

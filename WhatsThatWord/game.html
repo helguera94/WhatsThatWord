@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What's That Word!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="gameContainer">
+    <h1>What's That Word!</h1>
+
+    <!-- game -->
+    <div id="gameArea" >
+        <p id="rules">Guess the word one letter at a time. You have 5 wrong tries.</p>
+        <p id="wordDisplay"></p>
+        <p>Wrong guesses: <span id="wrongCount">0</span>/5</p>
+
+        <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter">
+        <button  onclick="guessLetter()">Guess</button>
+        <div id="controls">
+            <button id="hintBtn" onclick="giveHint()" style="display:none;">Get Hint</button>
+            <button id="blueButton" type = "button" onclick="location.href='index.html'">Go Back To Mode</button>
+            <button id="blueButton" onclick="window.alert('Instructions \n Enter a letter you have 5 tries to guess the letters to create a word')"> Instructions</button>
+
+        </div>
+        <p id="message"></p>
+    </div>
+
+</div>
+<canvas id="bg"></canvas>
+<script src="intro.js" ></script>
+<script src="instructions.js"></script>
+<script src="game.js" ></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        if (window.startGame) {
+            const mode = new URLSearchParams(location.search).get('mode') || 'fun';
+            startGame(mode);
+        }
+    });</script>
+</body>
+</html>

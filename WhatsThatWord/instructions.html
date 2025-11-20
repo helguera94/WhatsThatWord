@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What's That Word!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body >
+<canvas id="bg"></canvas>
+
+<div class="grid">
+    <div class="textbox scroll-area">
+        <h1>What's That Word!</h1>
+
+        <div class="content">
+            <h2>Objective</h2>
+            <p>Guess the hidden word one letter at a time before you run out of tries!</p>
+
+            <h2>How to Play</h2>
+            <ul>
+                <li><strong>Choose a Mode</strong>
+                    <ul>
+                        <li><strong>School Mode:</strong> Enter your own list of words separated by commas (like <code>math,science,history</code>) or upload a <code>.txt</code> file with one word per line.</li>
+                        <li><strong>Fun Mode:</strong> Play using a built-in set of words already included in the game.</li>
+                    </ul>
+                </li>
+                <li><strong>Start the Game:</strong> After choosing a mode, a hidden word will appear on the screen as underscores (<code>_ _ _ _</code>).</li>
+                <li><strong>Make a Guess:</strong> Type a single letter in the box and press <strong>Guess</strong> or press <strong>Enter</strong>.</li>
+            </ul>
+
+            <h2>Rules</h2>
+            <ul>
+                <li>You have <strong>5 wrong tries</strong> before you lose the round.</li>
+                <li>Correct letters appear in their positions.</li>
+                <li>Wrong guesses increase your wrong count.</li>
+            </ul>
+
+            <h2>Winning & Losing</h2>
+            <ul>
+                <li><strong>Win:</strong> Guess all the letters before reaching 5 wrong tries.</li>
+                <li><strong>Lose:</strong> After 5 wrong guesses, the word is revealed.</li>
+            </ul>
+
+            <h2>After the Round</h2>
+            <ul>
+                <li>Click <strong>Replay</strong> to play again.</li>
+                <li>Click <strong>Home</strong> to return to the mode selection screen.</li>
+            </ul>
+
+            <h2>Hints</h2>
+            <p>After a few wrong guesses, a <strong>Get Hint</strong> button may appear. Click it to get a clue about one of the letters in the word.</p>
+
+            <h2>Tips</h2>
+            <ul>
+                <li>Guess one letter at a time (A–Z).</li>
+                <li>Start with common vowels like A, E, and O.</li>
+                <li>You can return to the main menu anytime.</li>
+            </ul>
+
+        </div>
+    </div>
+    <footer>
+        <button id="blueButton" onclick="window.location.href='intro.html'">Back to Game</button>
+    </footer>
+</div>
+
+<script src="intro.js"></script>
+<script src="instructions.js"></script>
+<script src="game.js"></script>
+
+</body>
+</html>
