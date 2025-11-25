@@ -9,7 +9,11 @@
         activePool: Array.isArray(App.activePool) ? App.activePool : [],
         chosenWord: App.chosenWord || "",
         maxGuesses: App.maxGuesses || 5,
+        //timer
+        timerId: null,
+        timeLeft: 0,
     });
+
 
     window.App = App;
 
@@ -18,6 +22,37 @@
     const show = (id, disp="inline") => { const el = $(id); if (el) el.style.display = disp; };
     const hide = (id) => { const el = $(id); if (el) el.style.display = "none"; };
 
+// countdown function
+    function startCountdown(seconds = 20){
+
+        // clears any previous timer
+        if(App.timerId){
+            clearTimeout(App.timerId);
+            App.timerId = null;
+        }
+
+        App.timeLeft = seconds;
+        setText("timer",App.timeLeft)
+
+        App.timerId = setInterval(() => {
+            App.timeLeft--;
+            setText("timer",App.timeLeft)
+            if(App.timeLeft <= 0){
+               clearInterval(App.timerId);
+                App.timeLeft= null;
+                // forces game over when time is up
+                App.wrongGuesses = App.maxGuesses;
+                checkGameOver();
+            }
+        },1000);
+    }
+    function stopCountdown(){
+        if(App.timerId){
+            clearInterval(App.timerId);
+            App.timerId = null;
+        }
+        setText("timer","");
+    }
     window.startGame   = startGame;
     window.guessLetter = guessLetter;
     window.giveHint    = giveHint;
@@ -62,9 +97,15 @@
         // reset
         App.guessedLetters = [];
         App.wrongGuesses   = 0;
+
         setText("wrongCount", "0");
         setText("message", "");
+
+        stopCountdown();
+        setText("timer","")
+
         if (letterInput) { letterInput.disabled = false; letterInput.value = ""; letterInput.focus(); }
+
 
         updateWordDisplay();
 
@@ -106,6 +147,10 @@
         } else {
             App.wrongGuesses++;
             setText("wrongCount", String(App.wrongGuesses));
+            //countdown starts
+            if(App.wrongGuesses === 2) {
+                startCountdown(20);
+            }
             if (msg) msg.textContent = "Not correct, try again.";
 
             // show hint after 2 wrong guesses
@@ -159,6 +204,8 @@
         const solved = !(wordDisplay?.textContent || "").includes("_");
 
         if (App.wrongGuesses >= App.maxGuesses) {
+            //timer stops when game over
+            stopCountdown();
             if (wordDisplay) wordDisplay.textContent = App.chosenWord.split("").join(" ");
             setText(
                 "message",
@@ -170,6 +217,7 @@
             if (hintBtn) hintBtn.disabled = true;
             if (guessBtn) guessBtn.disabled = true;
         } else if (solved) {
+            stopCountdown();// timer stops when user wins
             setText("message", `You win! The word was: ${App.chosenWord}`);
 
             disableGame();
