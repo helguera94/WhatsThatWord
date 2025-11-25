@@ -18,12 +18,14 @@
 
         <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter">
         <button  onclick="guessLetter()">Guess</button>
+        <p> Time left: <span id="timer"></span></p>
         <div id="controls">
             <button id="hintBtn" onclick="giveHint()" style="display:none;">Get Hint</button>
             <button id="blueButton" type = "button" onclick="location.href='index.html'">Go Back To Mode</button>
             <button id="blueButton" onclick="window.alert('Instructions \n Enter a letter you have 5 tries to guess the letters to create a word')"> Instructions</button>
 
         </div>
+
         <p id="message"></p>
     </div>
 
