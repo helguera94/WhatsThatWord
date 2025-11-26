@@ -1,4 +1,3 @@
-//canvas setup
 const canvas = document.getElementById("bg");
 const ctx = canvas.getContext("2d");
 
@@ -8,24 +7,6 @@ canvas.height = window.innerHeight;
 const gridImg = new Image();
 gridImg.src = "assets/grid.png";
 
-// const textboxImg = new Image();
-// textboxImg.src = "assets/textbox.png";
-
-
-//game logic
-let defaultWords = ["apple", "banana", "grape", "school", "coding", "ocean", "planet"];
-let customWords = [];     
-let chosenWord = "";
-let guessedLetters = [];
-let wrongGuesses = 0;
-let maxGuesses = 5;
-let activePool = []; 
-let lastRoundWon = false;
-let lostByHints = false;
-let selectedMode = "";
-
-
-//background + textbox
 function drawBackground() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -34,13 +15,6 @@ function drawBackground() {
   } else {
     ctx.fillStyle = "darkslateblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  if (textboxImg.complete && textboxImg.naturalWidth > 0) {
-    ctx.drawImage(textboxImg, canvas.width / 2 - 250, canvas.height - 160, 500, 140);
-  } else {
-    ctx.fillStyle = "black";
-    ctx.fillRect(canvas.width / 2 - 250, canvas.height - 160, 500, 140);
   }
 }
 
@@ -51,10 +25,92 @@ window.addEventListener("resize", () => {
 });
 
 gridImg.onload = drawBackground;
-textboxImg.onload = drawBackground;
 
 
-//mode selection
+/*global variables*/
+const defaultWords = [
+            "apple","banana","grape","orange","peach","mango","cherry","lemon",
+            "robot","ninja","pirate","dragon","castle","wizard","rocket","spaceship",
+            "galaxy","comet","planet","asteroid","jungle","desert","ocean","coral",
+            "beach","island","mountain","valley","forest","canyon","thunder","rainbow",
+            "glitter","sparkle","starlight","sunshine","moonlight","shadow","whistle","giggle",
+            "cupcake","donut","waffle","pizza","burger","taco","sushi","noodle",
+            "cookie","brownie","popcorn","pretzel","marshmallow","chocolate","honey","caramel",
+            "skateboard","bicycle","trampoline","kite"
+        ];
+
+let customWords = [];         // uploaded/typed words for school mode
+let activePool = [];          // current session’s pool (built from mode source)
+let lastRoundWon = false;     // used by replay to remove the last word
+let lostByHints = false;      // special loss if hints reveal the full word
+
+let chosenWord = "";
+let guessedLetters = [];
+let wrongGuesses = 0;
+const maxGuesses = 5;
+let selectedMode = "";        // "school" or "fun"
+
+//leaderboard counters per round
+let totalGuesses = 0;
+let hintsUsed = 0;
+let roundStartAt = 0;
+
+//timer
+let timerInterval = null;
+
+
+
+
+
+/*helper functions*/
+function pickRandomWord(words) {
+  return words[Math.floor(Math.random() * words.length)].trim().toLowerCase();
+}
+
+function normalizeList(list) {
+  //lowercases, trims, removes empties & duplicates
+  return [...new Set(list.map(w => w.trim().toLowerCase()).filter(Boolean))];
+}
+
+function buildActivePoolForMode() {
+  if (selectedMode === "school") {
+    let pool = [];
+    if (customWords.length > 0) {
+      pool = customWords;
+    } else {
+      const raw = (document.getElementById("schoolWords")?.value || "");
+      pool = raw.split(","); // can be empty list if user didn't type
+    }
+    pool = normalizeList(pool);
+    if (pool.length === 0) pool = normalizeList(defaultWords);
+    activePool = pool.slice();
+  } else {
+    activePool = normalizeList(defaultWords);
+  }
+}
+
+
+
+function getUnrevealedLetters() {
+  const need = new Set();
+  for (const ch of chosenWord.toLowerCase()) {
+    if (/[a-z]/.test(ch) && !guessedLetters.includes(ch)) {
+      need.add(ch);
+    }
+  }
+  return Array.from(need);
+}
+
+function updateWordDisplay() {
+  let display = "";
+  for (const letter of chosenWord) {
+    display += guessedLetters.includes(letter) ? (letter + " ") : "_ ";
+  }
+  document.getElementById("wordDisplay").textContent = display.trim();
+}
+
+
+/*ui*/
 function selectMode(mode) {
   selectedMode = mode;
   document.getElementById("modeSelect").style.display = "none";
@@ -66,111 +122,109 @@ function selectMode(mode) {
   }
 }
 
-//improves ux
-document.getElementById("letterInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") guessLetter();
-});
-
-//file input listener
-document.getElementById("wordFile").addEventListener("change", function (event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const text = e.target.result;
-    //split by line or comma
-    customWords = text
-      .split(/\r?\n|,/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length > 0);
-    document.getElementById("message").textContent =
-      "Words loaded from file!";
-  };
-  reader.readAsText(file);
-});
-
-//start game
 function startGame(mode) {
-
-  document.getElementById("modeSelect").style.display = "none";
-  //forces a selected mode to be set
+  //ensure mode is set
   selectedMode = mode || selectedMode || "fun";
 
+  //flip UI
+  document.getElementById("modeSelect").style.display = "none";
   document.getElementById("schoolInput").style.display = "none";
   document.getElementById("gameArea").style.display = "block";
 
-  //end of round buttons
+  //hide end-of-round buttons
   document.getElementById("replayBtn").style.display = "none";
   document.getElementById("homeBtn").style.display = "none";
 
-  //enables guess button for new rounds
+  //enable Guess for new round
   const guessBtn = document.getElementById("guessBtn");
   guessBtn.disabled = false;
   guessBtn.style.display = "inline";
 
-  //init the pool only when empty
-  if (selectedMode === "school") {
-    if (activePool.length === 0) {
-      let pool = [];
-      if (customWords.length > 0) {
-        pool = customWords;
-      } else {
-        const raw = document.getElementById("schoolWords").value || "";
-        pool = raw.split(",").map(w => w.trim()).filter(Boolean);
-      }
-      if (pool.length === 0) pool = defaultWords;
-      activePool = [...new Set(pool.map(w => w.toLowerCase()))]; //normalized copy
-    }
-  } else { //fun
-    if (activePool.length === 0) {
-      activePool = [...new Set(defaultWords.map(w => w.toLowerCase()))];
-    }
-  }
-
-  //pick from the active pool
+  //build the active pool if empty, then pick a word
+  if (activePool.length === 0) buildActivePoolForMode();
   chosenWord = pickRandomWord(activePool);
 
-  //reset the win/loss flag for the new round
-  lastRoundWon = false;
-
-
+  //reset round state
   guessedLetters = [];
   wrongGuesses = 0;
   document.getElementById("wrongCount").textContent = wrongGuesses;
   document.getElementById("message").textContent = "";
-  document.getElementById("letterInput").disabled = false;
-  document.getElementById("hintBtn").style.display = "none";
-  document.getElementById("hintBtn").disabled = true; 
 
+  //input
   const li = document.getElementById("letterInput");
+  li.disabled = false;
   li.value = "";
   li.focus();
 
-  lostByHints = false;
+  //hint starts hidden & disabled
+  const hintBtn = document.getElementById("hintBtn");
+  hintBtn.style.display = "none";
+  hintBtn.disabled = true;
 
+  //leaderboard round counters
+  totalGuesses = 0;
+  hintsUsed = 0;
+  lostByHints = false;
+  roundStartAt = Date.now();
+  startTimer();
   updateWordDisplay();
   drawBackground();
 }
 
-function pickRandomWord(words) {
-  return words[Math.floor(Math.random() * words.length)].trim().toLowerCase();
-}
-
-function updateWordDisplay() {
-  let display = "";
-  for (let letter of chosenWord) {
-    display += guessedLetters.includes(letter) ? letter + " " : "_ ";
+function restartGame() {
+  //remove the word from pool only if we just WON
+  if (lastRoundWon && activePool.length > 0) {
+    activePool = activePool.filter(w => w !== chosenWord);
   }
-  document.getElementById("wordDisplay").textContent = display.trim();
+  startGame(selectedMode || "fun");
 }
 
+function goHome() {
+  stopTimer();  
+
+  //back to mode chooser
+  document.getElementById("modeSelect").style.display = "block";
+
+  //if last mode was school, show the input again
+  if (selectedMode === "school") {
+    document.getElementById("schoolInput").style.display = "block";
+  } else {
+    document.getElementById("schoolInput").style.display = "none";
+  }
+
+  //reset UI
+  document.getElementById("gameArea").style.display = "none";
+  document.getElementById("replayBtn").style.display = "none";
+  document.getElementById("homeBtn").style.display = "none";
+  document.getElementById("hintBtn").style.display = "none";
+  document.getElementById("guessBtn").disabled = false;
+
+  document.getElementById("message").textContent = "";
+  document.getElementById("wordDisplay").textContent = "";
+  document.getElementById("wrongCount").textContent = "0";
+
+  //clear school inputs so new words/files can be provided
+  document.getElementById("schoolWords").value = "";
+  document.getElementById("wordFile").value = "";
+  customWords = [];
+
+  //reset session selection & pools
+  selectedMode = "";
+  activePool = [];
+  lastRoundWon = false;
+  lostByHints = false;
+
+  drawBackground();
+}
+
+
+/*core game logic*/
 function guessLetter() {
-  let input = document.getElementById("letterInput");
-  let guess = input.value.toLowerCase();
+  const input = document.getElementById("letterInput");
+  const guess = (input.value || "").toLowerCase();
   input.value = "";
 
-  if (!guess || guess.length !== 1) {
+  if (!guess || guess.length !== 1 || !/[a-z]/.test(guess)) {
     document.getElementById("message").textContent = "Enter a single letter.";
     return;
   }
@@ -179,6 +233,9 @@ function guessLetter() {
     document.getElementById("message").textContent = "You already guessed that!";
     return;
   }
+
+  //count only valid, new guesses
+  totalGuesses += 1;
 
   guessedLetters.push(guess);
 
@@ -201,38 +258,28 @@ function guessLetter() {
 }
 
 function giveHint() {
-  //letters that still need revealing (letters only)
+  //remaining unrevealed letters (letters only)
   let remaining = getUnrevealedLetters();
-  if (remaining.length === 0) return; // nothing to reveal
+  if (remaining.length === 0) return;
 
   const hintLetter = remaining[Math.floor(Math.random() * remaining.length)];
   if (!guessedLetters.includes(hintLetter)) {
     guessedLetters.push(hintLetter);
+    hintsUsed += 1;
   }
 
   document.getElementById("message").textContent =
     "Hint: the word contains '" + hintLetter + "'";
   updateWordDisplay();
 
-  //recompute after applying the hint
+  //if hints just revealed everything, trigger a hint-based loss
   remaining = getUnrevealedLetters();
   if (remaining.length === 0) {
-    //hints fully revealed the word -> auto lose by hints
     lostByHints = true;
     wrongGuesses = maxGuesses;
     document.getElementById("wrongCount").textContent = wrongGuesses;
     checkGameOver();
   }
-}
-
-function getUnrevealedLetters() {
-  const need = new Set();
-  for (const ch of chosenWord.toLowerCase()) {
-    if (/[a-z]/.test(ch) && !guessedLetters.includes(ch)) {
-      need.add(ch);
-    }
-  }
-  return Array.from(need);
 }
 
 function checkGameOver() {
@@ -243,82 +290,159 @@ function checkGameOver() {
   const solved = !wordDisplay.textContent.includes("_");
 
   if (wrongGuesses >= maxGuesses) {
-    //reveal full word at the top
+    //show full word at the top
     wordDisplay.textContent = chosenWord.split("").join(" ");
 
     document.getElementById("message").textContent = lostByHints
       ? "You revealed the whole word with hints — you lose! The word was: " + chosenWord
       : "Game Over! The word was: " + chosenWord;
 
+    lastRoundWon = false;
     disableGame();
+
     if (hintBtn) hintBtn.disabled = true;
     document.getElementById("replayBtn").style.display = "inline";
     document.getElementById("homeBtn").style.display = "inline";
     if (guessBtn) guessBtn.disabled = true;
+
+    //save loss
+    saveGameResult({
+      mode: selectedMode || "fun",
+      word: chosenWord,
+      won: false,
+      wrongGuesses,
+      totalGuesses,
+      hintsUsed,
+      durationMs: Date.now() - roundStartAt,
+      lostByHints
+    });
+
   } else if (solved) {
     document.getElementById("message").textContent = "You win! The word was: " + chosenWord;
+
+    lastRoundWon = true;
     disableGame();
+
     if (hintBtn) hintBtn.disabled = true;
     document.getElementById("replayBtn").style.display = "inline";
     document.getElementById("homeBtn").style.display = "inline";
     if (guessBtn) guessBtn.disabled = true;
+
+    //save win
+    saveGameResult({
+      mode: selectedMode || "fun",
+      word: chosenWord,
+      won: true,
+      wrongGuesses,
+      totalGuesses,
+      hintsUsed,
+      durationMs: Date.now() - roundStartAt,
+      lostByHints: false
+    });
   }
 }
 
-function goHome() {
-  //show the mode chooser
-  document.getElementById("modeSelect").style.display = "block";
-
-  activePool = [];
-  lastRoundWon = false;
-
-  //if last mode was school, open the word input so they can re enter words right away
-  if (selectedMode === "school") {
-    document.getElementById("schoolInput").style.display = "block";
-  } else {
-    document.getElementById("schoolInput").style.display = "none";
-  }
-
-  //reset UI
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("replayBtn").style.display = "none";
-  document.getElementById("homeBtn").style.display = "none";
-  document.getElementById("hintBtn").style.display = "none";
-  document.getElementById("guessBtn").disabled = false;
-
-  document.getElementById("message").textContent = "";
-  document.getElementById("wordDisplay").textContent = "";
-  document.getElementById("wrongCount").textContent = "0";
-
-  //clear inputs so new words/files can be provided
-  document.getElementById("schoolWords").value = "";
-  document.getElementById("wordFile").value = "";
-  customWords = [];
-
-  //reset selection so they can choose again
-  selectedMode = "";
-
-  drawBackground();
-}
-
-
-function restartGame() {
-  //if won last round, remove that word from the current pool
-  if (lastRoundWon && activePool.length > 0) {
-    activePool = activePool.filter(w => w !== chosenWord);
-  }
-  //uses whichever mode is currently selected
-  startGame(selectedMode || "fun");
-}
-
+//Timer
 function disableGame() {
-  document.getElementById("letterInput").disabled = true;
-  document.getElementById("guessBtn").disabled = true;
+  stopTimer();
+
+  const li = document.getElementById("letterInput");
+  if (li) li.disabled = true;
+
+  const guessBtn = document.getElementById("guessBtn");
+  if (guessBtn) guessBtn.disabled = true;
+
   const hintBtn = document.getElementById("hintBtn");
   if (hintBtn) hintBtn.disabled = true;
 }
 
-//making sure inline onclick handlers always work
+function formatClock(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function startTimer() {
+  stopTimer(); // safety
+  const timerEl = document.getElementById("timer");
+  if (!timerEl) return;
+  timerEl.textContent = "0:00";
+  timerInterval = setInterval(() => {
+    const elapsed = Date.now() - roundStartAt;
+    timerEl.textContent = formatClock(elapsed);
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+
+/*leaderboard*/
+function saveGameResult({ mode, word, won, wrongGuesses, totalGuesses, hintsUsed, durationMs, lostByHints }) {
+  const STORE_KEY = "wtw_scores";
+  const entry = {
+    mode,
+    word,
+    won,
+    wrongGuesses,
+    totalGuesses,
+    hintsUsed,
+    durationMs,
+    lostByHints: !!lostByHints,
+    date: new Date().toISOString()
+  };
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    arr.unshift(entry);
+    if (arr.length > 500) arr.length = 500; // keep tidy
+    localStorage.setItem(STORE_KEY, JSON.stringify(arr));
+  } catch (e) {
+    console.warn("Failed to save result:", e);
+  }
+}
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  //enter key submits a guess
+  const li = document.getElementById("letterInput");
+  if (li) {
+    li.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") guessLetter();
+    });
+  }
+
+  //file input listener (school words)
+  const fileEl = document.getElementById("wordFile");
+  if (fileEl) {
+    fileEl.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const text = e.target.result;
+        customWords = text
+          .split(/\r?\n|,/)
+          .map(w => w.trim().toLowerCase())
+          .filter(w => w.length > 0);
+        document.getElementById("message").textContent = "Words loaded from file!";
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  drawBackground();
+});
+
+
+/*double checking if hooks work*/
 window.selectMode  = selectMode;
 window.startGame   = startGame;
 window.guessLetter = guessLetter;
