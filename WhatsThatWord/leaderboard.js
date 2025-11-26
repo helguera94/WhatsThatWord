@@ -102,7 +102,7 @@ function renderFewestWrong(scores) {
 function renderRecent(scores) {
   const recent = [...scores].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
   const rows = recent.map(g => [
-    g.won ? "✅ Win" : (g.lostByHints ? "🪄 Hint-Loss" : "❌ Loss"),
+    g.won ? " Win" : (g.lostByHints ? " Hint-Loss" : " Loss"),
     g.word || "—",
     g.mode,
     formatMs(g.durationMs),
