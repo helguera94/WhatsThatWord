@@ -1,16 +1,49 @@
 //key used by the game to store results
 const STORE_KEY = "wtw_scores";
 
-function loadScores() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
+const SafeStore = (() => {
+  let mem = [];
+  function lsOK() {
+    try {
+      const t = "__wtw_test__";
+      localStorage.setItem(t, "1");
+      localStorage.removeItem(t);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
-}
+  const hasLS = lsOK();
+
+  return {
+    load() {
+      if (!hasLS) return mem;
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch {
+        return [];
+      }
+    },
+    save(arr) {
+      if (!hasLS) { mem = Array.isArray(arr) ? arr.slice(0, 500) : []; return; }
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(arr.slice(0, 500)));
+      } catch {
+        //if quota or security blocks, fall back to memory
+        mem = Array.isArray(arr) ? arr.slice(0, 500) : [];
+      }
+    },
+    clear() {
+      if (!hasLS) { mem = []; return; }
+      try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
+    }
+  };
+})();
+
+//helpers/rendering functions
+function loadScores() { return SafeStore.load(); }
 
 function formatMs(ms) {
   if (typeof ms !== "number" || !isFinite(ms) || ms < 0) return "—";
@@ -21,18 +54,11 @@ function formatMs(ms) {
 }
 
 function computeStreaks(scores) {
-  // Sort by time ascending to compute streaks correctly
   const sorted = [...scores].sort((a,b) => new Date(a.date) - new Date(b.date));
-  let best = 0, current = 0, lastResultWasWin = false;
+  let best = 0, current = 0, lastWin = false;
   for (const g of sorted) {
-    if (g.won) {
-      if (lastResultWasWin) current += 1; else current = 1;
-      best = Math.max(best, current);
-      lastResultWasWin = true;
-    } else {
-      current = 0;
-      lastResultWasWin = false;
-    }
+    if (g.won) { current = lastWin ? current + 1 : 1; best = Math.max(best, current); lastWin = true; }
+    else { current = 0; lastWin = false; }
   }
   return { best, current };
 }
@@ -57,6 +83,10 @@ function tableHTML(rows, headers) {
   return `<table>${thead}${tbody}</table>`;
 }
 
+function safeWhen(d) {
+  try { return new Date(d).toLocaleString(); } catch { return new Date(d).toString(); }
+}
+
 function renderFastest(scores) {
   const fastestWins = scores
     .filter(g => g.won && typeof g.durationMs === "number")
@@ -69,19 +99,20 @@ function renderFastest(scores) {
     formatMs(g.durationMs),
     g.totalGuesses ?? "—",
     (g.wrongGuesses ?? 0),
-    new Date(g.date).toLocaleString()
+    safeWhen(g.date)
   ]);
 
-  document.getElementById("fastestWrap").innerHTML = tableHTML(
-    rows,
-    ["Word", "Mode", "Time", "Guesses", "Wrong", "When"]
-  );
+  document.getElementById("fastestWrap").innerHTML =
+    tableHTML(rows, ["Word", "Mode", "Time", "Guesses", "Wrong", "When"]);
 }
 
 function renderFewestWrong(scores) {
-  const clean = scores.filter(g => g.won);
-  const fewest = clean
-    .sort((a,b) => (a.wrongGuesses ?? 0) - (b.wrongGuesses ?? 0) || (a.durationMs ?? 0) - (b.durationMs ?? 0))
+  const fewest = scores
+    .filter(g => g.won)
+    .sort((a,b) =>
+      (a.wrongGuesses ?? 0) - (b.wrongGuesses ?? 0) ||
+      (a.durationMs ?? 0) - (b.durationMs ?? 0)
+    )
     .slice(0, 10);
 
   const rows = fewest.map(g => [
@@ -90,13 +121,11 @@ function renderFewestWrong(scores) {
     (g.wrongGuesses ?? 0),
     g.totalGuesses ?? "—",
     formatMs(g.durationMs),
-    new Date(g.date).toLocaleString()
+    safeWhen(g.date)
   ]);
 
-  document.getElementById("fewestWrap").innerHTML = tableHTML(
-    rows,
-    ["Word", "Mode", "Wrong", "Guesses", "Time", "When"]
-  );
+  document.getElementById("fewestWrap").innerHTML =
+    tableHTML(rows, ["Word", "Mode", "Wrong", "Guesses", "Time", "When"]);
 }
 
 function renderRecent(scores) {
@@ -109,19 +138,14 @@ function renderRecent(scores) {
     g.totalGuesses ?? "—",
     (g.wrongGuesses ?? 0),
     (g.hintsUsed ?? 0),
-    new Date(g.date).toLocaleString()
+    safeWhen(g.date)
   ]);
 
-  document.getElementById("recentWrap").innerHTML = tableHTML(
-    rows,
-    ["Result", "Word", "Mode", "Time", "Guesses", "Wrong", "Hints", "When"]
-  );
+  document.getElementById("recentWrap").innerHTML =
+    tableHTML(rows, ["Result", "Word", "Mode", "Time", "Guesses", "Wrong", "Hints", "When"]);
 }
 
-function filterByMode(all, mode) {
-  if (mode === "all") return all;
-  return all.filter(g => g.mode === mode);
-}
+function filterByMode(all, mode) { return mode === "all" ? all : all.filter(g => g.mode === mode); }
 
 function renderAll() {
   const mode = document.getElementById("modeFilter").value;
@@ -136,9 +160,8 @@ function renderAll() {
 document.getElementById("modeFilter").addEventListener("change", renderAll);
 document.getElementById("clearBtn").addEventListener("click", () => {
   if (!confirm("Clear all saved scores from this browser?")) return;
-  localStorage.removeItem(STORE_KEY);
+  SafeStore.clear();
   renderAll();
 });
 
-// initial render
 renderAll();

@@ -56,8 +56,8 @@ let hintsUsed = 0;
 let roundStartAt = 0;
 
 //timer
-let timerInterval = null;
-
+let countdownInterval = null;
+let timeLeft = 10; //seconds
 
 
 
@@ -166,7 +166,7 @@ function startGame(mode) {
   hintsUsed = 0;
   lostByHints = false;
   roundStartAt = Date.now();
-  startTimer();
+  startCountdown(); 
   updateWordDisplay();
   drawBackground();
 }
@@ -180,7 +180,7 @@ function restartGame() {
 }
 
 function goHome() {
-  stopTimer();  
+  stopCountdown();
 
   //back to mode chooser
   document.getElementById("modeSelect").style.display = "block";
@@ -253,6 +253,7 @@ function guessLetter() {
     }
   }
 
+  resetCountdown(10);
   updateWordDisplay();
   checkGameOver();
 }
@@ -274,6 +275,9 @@ function giveHint() {
 
   //if hints just revealed everything, trigger a hint-based loss
   remaining = getUnrevealedLetters();
+  if (getUnrevealedLetters().length > 0) {
+  resetCountdown(10);
+}
   if (remaining.length === 0) {
     lostByHints = true;
     wrongGuesses = maxGuesses;
@@ -341,10 +345,33 @@ function checkGameOver() {
     });
   }
 }
+function handleTimeoutWrongGuess() {
+  //only do this if the round is active
+  if (wrongGuesses >= maxGuesses) return;
+
+  wrongGuesses++;
+  document.getElementById("wrongCount").textContent = wrongGuesses;
+  document.getElementById("message").textContent = " Time's up! That's a wrong guess.";
+
+  //reveal Hint after 2 wrongs (same as before)
+  if (wrongGuesses === 2) {
+    const hintBtn = document.getElementById("hintBtn");
+    hintBtn.style.display = "inline";
+    hintBtn.disabled = false;
+  }
+
+  updateWordDisplay();
+  if (wrongGuesses >= maxGuesses) {
+    checkGameOver(); //will stop UI & save result
+  } else {
+    //keep playing: restart the 10s window
+    startCountdown();
+  }
+}
 
 //Timer
 function disableGame() {
-  stopTimer();
+  stopCountdown();
 
   const li = document.getElementById("letterInput");
   if (li) li.disabled = true;
@@ -356,29 +383,35 @@ function disableGame() {
   if (hintBtn) hintBtn.disabled = true;
 }
 
-function formatClock(ms) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function updateTimerUI() {
+  const el = document.getElementById("timer");
+  if (el) el.textContent = String(Math.max(0, timeLeft));
 }
 
-function startTimer() {
-  stopTimer(); // safety
-  const timerEl = document.getElementById("timer");
-  if (!timerEl) return;
-  timerEl.textContent = "0:00";
-  timerInterval = setInterval(() => {
-    const elapsed = Date.now() - roundStartAt;
-    timerEl.textContent = formatClock(elapsed);
-  }, 1000);
+function resetCountdown(seconds = 10) {
+  timeLeft = seconds;
+  updateTimerUI();
 }
 
-function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+function stopCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
   }
+}
+
+function startCountdown() {
+  stopCountdown();             // safety
+  resetCountdown(10);          // fresh 10 seconds
+  countdownInterval = setInterval(() => {
+    timeLeft -= 1;
+    updateTimerUI();
+    if (timeLeft <= 0) {
+      // time's up -> auto wrong guess
+      stopCountdown();
+      handleTimeoutWrongGuess();
+    }
+  }, 1000);
 }
 
 
