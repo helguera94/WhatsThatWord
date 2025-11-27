@@ -20,6 +20,26 @@
     color: white;
 
 }
+/* white text with black outline */
+.text-outline {
+  color: #fff;
+  text-shadow:
+    0 1px 0 #000,
+    1px 0 0 #000,
+    0 -1px 0 #000,
+    -1px 0 0 #000,
+    /*corners for thicker edge */
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000;
+}
+@supports (-webkit-text-stroke: 1px white) {
+  .text-outline {
+    -webkit-text-stroke: 1.25px black; /* outline thickness */
+    text-shadow: none;                  /* stroke is enough */
+  }
+}
 #gameContainer h1,
 #gameContainer p {
     text-shadow: 2px 2px 6px black;
