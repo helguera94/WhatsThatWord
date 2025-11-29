@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What's That Word!</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="bg"></canvas>
+
+  <div id="instModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="toggleModal(false)">&times;</span>
+      <h2>How to Play</h2>
+      <ul style="text-align: left; margin: 0 auto; max-width: 300px;">
+        <li>Choose a mode: <strong>School</strong> (custom words) or <strong>Fun</strong> (random).</li>
+        <li>Tap the letters to guess the word.</li>
+        <li>You have <strong>5 wrong tries</strong>.</li>
+        <li><strong>Turn Timer:</strong> You have 10 seconds to make a move!</li>
+      </ul>
+      <br>
+      <button onclick="toggleModal(false)">Got it!</button>
+    </div>
+  </div>
+
+  <div id="gameContainer">
+    <h1>What's That Word!</h1>
+
+    <div id="modeSelect">
+      <p class="text-outline">Choose a mode:</p>
+      <button onclick="selectMode('school')">School Mode</button>
+      <button onclick="selectMode('fun')">Fun Mode</button>
+      <button onclick="location.href='leaderboard.html'">Leaderboard</button>
+    </div>
+
+    <div id="schoolInput" style="display:none;">
+      <p class="text-outline">Enter words separated by commas or upload a text file:</p>
+      <input type="text" id="schoolWords" placeholder="e.g. math, science, history">
+      <br><br>
+      <input type="file" id="wordFile" accept=".txt">
+      <br><br>
+      <button onclick="startGame('school')">Start Game</button>
+      <button onclick="goHome()" class="secondary-btn">Back</button>
+    </div>
+
+    <div id="gameArea" style="display:none;">
+      
+      <div class="info-bar">
+        <span>Wrong: <span id="wrongCount" style="color:red">0</span>/5</span>
+        <span>Turn Timer: <span id="timer">10</span>s</span>
+      </div>
+
+      <p id="wordDisplay"></p>
+      <p id="message"></p>
+
+      <div id="keyboard-container"></div>
+
+      <div class="controls">
+        <button id="hintBtn" onclick="giveHint()" style="display:none;">Get Hint</button>
+        <button id="blueButton" onclick="toggleModal(true)">Instructions</button>
+        <button id="replayBtn" onclick="restartGame()" style="display:none;">Replay</button>
+        <button id="homeBtn" onclick="goHome()" style="display:none;">Home</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
