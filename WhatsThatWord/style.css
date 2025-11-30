@@ -1,4 +1,15 @@
-#bg{
+/* Import Font */
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+
+body {
+    margin: 0;
+    overflow-y: auto;
+    font-family: 'Patrick Hand', cursive, sans-serif; /* Notebook Font */
+    text-align: center;
+    color: #111;
+}
+
+#bg {
     position: fixed;
     top: 0;
     left: 0;
@@ -6,188 +17,201 @@
     height: 100%;
     z-index: -1;
 }
-#gameContainer{
+
+#gameContainer {
     position: relative;
-    z-index:1;
+    z-index: 1;
     min-height: 100vh;
-
     display: flex;
-    flex-direction: column;     /* stack items vertically */
-    justify-content: center;    /* center vertically */
-    align-items: center;        /* center horizontally */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
 
-    text-align: center;
-    color: white;
-
-}
-/* white text with black outline */
-.text-outline {
-  color: #fff;
-  text-shadow:
-    0 1px 0 #000,
-    1px 0 0 #000,
-    0 -1px 0 #000,
-    -1px 0 0 #000,
-    /*corners for thicker edge */
-    1px 1px 0 #000,
-    -1px 1px 0 #000,
-    1px -1px 0 #000,
-    -1px -1px 0 #000;
-}
-@supports (-webkit-text-stroke: 1px white) {
-  .text-outline {
-    -webkit-text-stroke: 1.25px black; /* outline thickness */
-    text-shadow: none;                  /* stroke is enough */
-  }
-}
-#gameContainer h1,
-#gameContainer p {
-    text-shadow: 2px 2px 6px black;
-}
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    color: #111111;
-    overflow-y: auto;
-  }
-
-  h1 {
+/* Typography & Effects */
+h1 {
+    font-size: 3rem;
     color: #ffcc00;
-    text-shadow: 2px 2px 4px black; /* text shadow */
-  }
-  
-  #rules, #wordDisplay, #message {
-    color: #111111;
-    font-size: 18px;
-    text-shadow: 1px 1px 2px black;
-  }
-  
-  button {
+    text-shadow: 2px 2px 4px black;
+    margin-bottom: 10px;
+}
+
+.text-outline {
+    color: #fff;
+    font-size: 1.5rem;
+    text-shadow: 
+      1px 1px 0 #000, -1px -1px 0 #000,  
+      1px -1px 0 #000, -1px 1px 0 #000;
+}
+
+#wordDisplay {
+    font-size: 3rem;
+    letter-spacing: 5px;
+    margin: 20px 0;
+    font-weight: bold;
+    color: #333;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 10px 20px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+#message {
+    font-size: 1.4rem;
+    min-height: 30px;
+    font-weight: bold;
+}
+
+/* Info Bar */
+.info-bar {
+    display: flex;
+    gap: 20px;
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 5px 15px;
+    border-radius: 15px;
+    border: 2px solid #333;
+    margin-bottom: 10px;
+}
+
+/* Buttons */
+button {
     margin: 5px;
-    padding: 8px 15px;
-    font-size: 16px;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    font-family: 'Patrick Hand', cursive;
     cursor: pointer;
     background-color: #333;
     color: #fff;
     border: 2px solid #ffcc00;
-    border-radius: 6px;
-  }
-  
-  button:hover {
-    background-color: #555;
-  }
-  
-  input[type="text"] {
-    padding: 5px;
-    font-size: 16px;
-    border: 2px solid #ffcc00;
-    border-radius: 6px;
-  }
-  .img-wrapper{
-      position: relative;
-      display: inline-block;
-  }
-  .img{
-     display: block;
-      width: 700px;
-      height:auto;
-  }
-  .overlay{
-      position: absolute;
-      inset:0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-      text-align: center;
-      pointer-events: none;
-  }
-  .note {
-      position: relative;
-      z-index: 1;
-      color: white;
-      font-size: 1.4rem;
-      text-align: center;
-      margin: 0;
-      color: #111;
-  }
-  #blueButton{
-      padding: 10px 22px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #3289be;
-      color: #fff;
-      border: 2px solid #373e67;
-      border-radius: 6px;
-  }
-#blueButton:hover {
-    background-color: #555;
+    border-radius: 8px;
+    transition: transform 0.1s;
 }
-  .grid{
-      min-height: 100vh;              /* use full screen */
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 40px 10px;
-      box-sizing: border-box;
-      background-image: url("assets/grid.png");
-      background-size: cover;
 
-  }
-  .textbox{
-      width: 80%;
-      max-width: 800px;
-      max-height: 70vh;               /* fits on screen */
-      overflow-y: auto;               /* scrolls inside */
-      background-color: rgb(50, 137, 190);
-      color: white;
-      padding: 25px 40px;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      border: 2px solid #373e67;
-      font-size: 1.2rem;
-      line-height: 1.6;
-  }
-.back-button {
+button:hover {
+    background-color: #555;
+    transform: scale(1.05);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.secondary-btn {
+    background-color: #666;
+    border-color: #999;
+}
+
+/* Inputs */
+input[type="text"] {
+    padding: 10px;
+    font-size: 1.2rem;
+    border: 2px solid #333;
+    border-radius: 6px;
+    font-family: 'Patrick Hand', cursive;
+    background: rgba(255,255,255,0.9);
+}
+
+/* --- Virtual Keyboard --- */
+#keyboard-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+.key-btn {
+    width: 40px;
+    height: 45px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background-color: #fff;
+    color: #333;
+    border: 2px solid #333;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Patrick Hand', cursive;
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+}
+
+.key-btn:hover {
+    background-color: #eee;
+    transform: translateY(-2px);
+}
+
+.key-btn:active {
+    transform: translateY(0);
+}
+
+.key-btn.correct {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border-color: #2E7D32;
+}
+
+.key-btn.wrong {
+    background-color: #f44336; /* Red */
+    color: white;
+    border-color: #c62828;
+    opacity: 0.6;
+}
+
+/* --- Shake Animation --- */
+.shake-effect {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(4px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+    40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+/* --- Modal --- */
+.modal {
+    display: none;
     position: fixed;
-    top: 20px;
-    left: 20px;
-    background-color: #333;
-    color: #fff;
-    border: 2px solid #ffcc00;
-    border-radius: 6px;
-    padding: 8px 14px;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: background-color 0.2s ease;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
 }
 
-.back-button:hover {
-    background-color: #555;
+.modal-content {
+    background-color: #fffdee; /* Paper color */
+    margin: 10% auto;
+    padding: 30px;
+    border: 3px solid #333;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    box-shadow: 10px 10px 0px rgba(0,0,0,0.5);
 }
-.scroll-area {
-    max-height: 80vh;       /* Fits on screen */
-    overflow-y: auto;       /* Adds scroll only inside textbox */
-    padding-right: 10px;
+
+.modal-content h2 {
+    margin-top: 0;
+    border-bottom: 2px dashed #aaa;
+    padding-bottom: 10px;
 }
-.content h2 {
-    margin-top: 1rem;
-}
-footer {
-    margin-top: 20px;
-}
-#startSchoolBtn{
-    padding: 10px 22px;
-    font-size: 16px;
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 30px;
+    font-weight: bold;
     cursor: pointer;
-    background-color: #3289be;
-    color: #fff;
-    border: 2px solid #373e67;
-    border-radius: 6px;
+    color: #aaa;
 }
-#startSchoolBtn:hover {
-    background-color: #555;
-}
+.close-btn:hover { color: #000; }

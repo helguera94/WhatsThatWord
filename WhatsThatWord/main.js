@@ -1,484 +1,435 @@
+/* --- Game State & Config --- */
+const Game = {
+    // Config
+    maxGuesses: 5,
+    defaultWords: [
+        "apple", "banana", "grape", "orange", "peach", "mango", "cherry", "lemon",
+        "robot", "ninja", "pirate", "dragon", "castle", "wizard", "rocket", "spaceship",
+        "galaxy", "comet", "planet", "asteroid", "jungle", "desert", "ocean", "coral",
+        "beach", "island", "mountain", "valley", "forest", "canyon", "thunder", "rainbow",
+        "glitter", "sparkle", "starlight", "sunshine", "moonlight", "shadow", "whistle", "giggle",
+        "cupcake", "donut", "waffle", "pizza", "burger", "taco", "sushi", "noodle",
+        "cookie", "brownie", "popcorn", "pretzel", "marshmallow", "chocolate", "honey", "caramel",
+        "skateboard", "bicycle", "trampoline", "kite"
+    ],
+
+    // State
+    customWords: [],
+    activePool: [],
+    selectedMode: "fun",
+    chosenWord: "",
+    guessedLetters: [],
+    wrongGuesses: 0,
+    isGameOver: false,
+    
+    // Stats
+    totalGuesses: 0,
+    hintsUsed: 0,
+    roundStartAt: 0,
+    lostByHints: false,
+    
+    // Timer
+    timerInterval: null,
+    timeLeft: 10
+};
+
+/* --- Canvas Background --- */
 const canvas = document.getElementById("bg");
 const ctx = canvas.getContext("2d");
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
 const gridImg = new Image();
 gridImg.src = "assets/grid.png";
 
 function drawBackground() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (gridImg.complete && gridImg.naturalWidth > 0) {
-    ctx.drawImage(gridImg, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle = "darkslateblue";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+    if (gridImg.complete && gridImg.naturalWidth > 0) {
+        ctx.drawImage(gridImg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = "#fffdee"; // Fallback paper color
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Draw simple grid lines
+        ctx.beginPath();
+        ctx.strokeStyle = "#aaccff";
+        for(let y=40; y<canvas.height; y+=40) {
+            ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+        }
+        ctx.stroke();
+    }
 }
-
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  drawBackground();
-});
-
 gridImg.onload = drawBackground;
+window.addEventListener("resize", drawBackground);
 
+/* --- Core Logic --- */
 
-/*global variables*/
-const defaultWords = [
-            "apple","banana","grape","orange","peach","mango","cherry","lemon",
-            "robot","ninja","pirate","dragon","castle","wizard","rocket","spaceship",
-            "galaxy","comet","planet","asteroid","jungle","desert","ocean","coral",
-            "beach","island","mountain","valley","forest","canyon","thunder","rainbow",
-            "glitter","sparkle","starlight","sunshine","moonlight","shadow","whistle","giggle",
-            "cupcake","donut","waffle","pizza","burger","taco","sushi","noodle",
-            "cookie","brownie","popcorn","pretzel","marshmallow","chocolate","honey","caramel",
-            "skateboard","bicycle","trampoline","kite"
-        ];
-
-let customWords = [];         // uploaded/typed words for school mode
-let activePool = [];          // current session’s pool (built from mode source)
-let lastRoundWon = false;     // used by replay to remove the last word
-let lostByHints = false;      // special loss if hints reveal the full word
-
-let chosenWord = "";
-let guessedLetters = [];
-let wrongGuesses = 0;
-const maxGuesses = 5;
-let selectedMode = "";        // "school" or "fun"
-
-//leaderboard counters per round
-let totalGuesses = 0;
-let hintsUsed = 0;
-let roundStartAt = 0;
-
-//timer
-let countdownInterval = null;
-let timeLeft = 10; //seconds
-
-
-
-
-/*helper functions*/
-function pickRandomWord(words) {
-  return words[Math.floor(Math.random() * words.length)].trim().toLowerCase();
+function initGame() {
+    // Physical keyboard listener
+    document.addEventListener("keydown", (e) => {
+        // Prevent typing if game over OR modal is open
+        if(Game.isGameOver || document.getElementById("instModal").style.display === "block") return;
+        
+        const key = e.key.toLowerCase();
+        // If it's a letter a-z
+        if (key.match(/^[a-z]$/)) {
+            handleGuess(key);
+        }
+    });
+    
+    // File input listener
+    const fileEl = document.getElementById("wordFile");
+    if (fileEl) {
+        fileEl.addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                Game.customWords = normalizeList(text.split(/\r?\n|,/));
+                document.getElementById("schoolWords").placeholder = "File loaded! (" + Game.customWords.length + " words)";
+                alert("Words loaded!"); 
+            };
+            reader.readAsText(file);
+        });
+    }
+    
+    drawBackground();
 }
 
 function normalizeList(list) {
-  //lowercases, trims, removes empties & duplicates
-  return [...new Set(list.map(w => w.trim().toLowerCase()).filter(Boolean))];
+    return [...new Set(list.map(w => w.trim().toLowerCase()).filter(w => w.length > 0))];
 }
 
-function buildActivePoolForMode() {
-  if (selectedMode === "school") {
-    let pool = [];
-    if (customWords.length > 0) {
-      pool = customWords;
+function buildActivePool() {
+    if (Game.selectedMode === "school") {
+        let pool = [];
+        if (Game.customWords.length > 0) {
+            pool = Game.customWords;
+        } else {
+            const raw = (document.getElementById("schoolWords")?.value || "");
+            pool = raw.split(","); 
+        }
+        pool = normalizeList(pool);
+        // Fallback if empty
+        if (pool.length === 0) pool = normalizeList(Game.defaultWords);
+        Game.activePool = pool;
     } else {
-      const raw = (document.getElementById("schoolWords")?.value || "");
-      pool = raw.split(","); // can be empty list if user didn't type
+        Game.activePool = normalizeList(Game.defaultWords);
     }
-    pool = normalizeList(pool);
-    if (pool.length === 0) pool = normalizeList(defaultWords);
-    activePool = pool.slice();
-  } else {
-    activePool = normalizeList(defaultWords);
-  }
-}
-
-
-
-function getUnrevealedLetters() {
-  const need = new Set();
-  for (const ch of chosenWord.toLowerCase()) {
-    if (/[a-z]/.test(ch) && !guessedLetters.includes(ch)) {
-      need.add(ch);
-    }
-  }
-  return Array.from(need);
-}
-
-function updateWordDisplay() {
-  let display = "";
-  for (const letter of chosenWord) {
-    display += guessedLetters.includes(letter) ? (letter + " ") : "_ ";
-  }
-  document.getElementById("wordDisplay").textContent = display.trim();
-}
-
-
-/*ui*/
-function selectMode(mode) {
-  selectedMode = mode;
-  document.getElementById("modeSelect").style.display = "none";
-
-  if (mode === "school") {
-    document.getElementById("schoolInput").style.display = "block";
-  } else {
-    startGame("fun");
-  }
 }
 
 function startGame(mode) {
-  //ensure mode is set
-  selectedMode = mode || selectedMode || "fun";
+    Game.selectedMode = mode || "fun";
+    Game.isGameOver = false;
 
-  //flip UI
-  document.getElementById("modeSelect").style.display = "none";
-  document.getElementById("schoolInput").style.display = "none";
-  document.getElementById("gameArea").style.display = "block";
-
-  //hide end-of-round buttons
-  document.getElementById("replayBtn").style.display = "none";
-  document.getElementById("homeBtn").style.display = "none";
-
-  //enable Guess for new round
-  const guessBtn = document.getElementById("guessBtn");
-  guessBtn.disabled = false;
-  guessBtn.style.display = "inline";
-
-  //build the active pool if empty, then pick a word
-  if (activePool.length === 0) buildActivePoolForMode();
-  chosenWord = pickRandomWord(activePool);
-
-  //reset round state
-  guessedLetters = [];
-  wrongGuesses = 0;
-  document.getElementById("wrongCount").textContent = wrongGuesses;
-  document.getElementById("message").textContent = "";
-
-  //input
-  const li = document.getElementById("letterInput");
-  li.disabled = false;
-  li.value = "";
-  li.focus();
-
-  //hint starts hidden & disabled
-  const hintBtn = document.getElementById("hintBtn");
-  hintBtn.style.display = "none";
-  hintBtn.disabled = true;
-
-  //leaderboard round counters
-  totalGuesses = 0;
-  hintsUsed = 0;
-  lostByHints = false;
-  roundStartAt = Date.now();
-  startCountdown(); 
-  updateWordDisplay();
-  drawBackground();
-}
-
-function restartGame() {
-  //remove the word from pool only if we just WON
-  if (lastRoundWon && activePool.length > 0) {
-    activePool = activePool.filter(w => w !== chosenWord);
-  }
-  startGame(selectedMode || "fun");
-}
-
-function goHome() {
-  stopCountdown();
-
-  //back to mode chooser
-  document.getElementById("modeSelect").style.display = "block";
-
-  //if last mode was school, show the input again
-  if (selectedMode === "school") {
-    document.getElementById("schoolInput").style.display = "block";
-  } else {
+    // UI Switching
+    document.getElementById("modeSelect").style.display = "none";
     document.getElementById("schoolInput").style.display = "none";
-  }
+    document.getElementById("gameArea").style.display = "block";
+    
+    // Button States
+    document.getElementById("replayBtn").style.display = "none";
+    document.getElementById("homeBtn").style.display = "none";
+    document.getElementById("hintBtn").style.display = "none";
+    document.getElementById("hintBtn").disabled = true;
 
-  //reset UI
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("replayBtn").style.display = "none";
-  document.getElementById("homeBtn").style.display = "none";
-  document.getElementById("hintBtn").style.display = "none";
-  document.getElementById("guessBtn").disabled = false;
+    // Data Setup
+    if (!Game.activePool.length || mode === 'school') buildActivePool();
+    Game.chosenWord = Game.activePool[Math.floor(Math.random() * Game.activePool.length)];
+    
+    Game.guessedLetters = [];
+    Game.wrongGuesses = 0;
+    Game.totalGuesses = 0;
+    Game.hintsUsed = 0;
+    Game.lostByHints = false;
+    Game.roundStartAt = Date.now();
 
-  document.getElementById("message").textContent = "";
-  document.getElementById("wordDisplay").textContent = "";
-  document.getElementById("wrongCount").textContent = "0";
-
-  //clear school inputs so new words/files can be provided
-  document.getElementById("schoolWords").value = "";
-  document.getElementById("wordFile").value = "";
-  customWords = [];
-
-  //reset session selection & pools
-  selectedMode = "";
-  activePool = [];
-  lastRoundWon = false;
-  lostByHints = false;
-
-  drawBackground();
+    // UI Reset
+    document.getElementById("wrongCount").textContent = "0";
+    document.getElementById("message").textContent = "";
+    document.getElementById("message").style.color = "#333";
+    
+    renderKeyboard();
+    updateWordDisplay();
+    startTimer();
 }
 
+function renderKeyboard() {
+    const container = document.getElementById("keyboard-container");
+    container.innerHTML = ""; // Clear old
+    const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
 
-/*core game logic*/
-function guessLetter() {
-  const input = document.getElementById("letterInput");
-  const guess = (input.value || "").toLowerCase();
-  input.value = "";
+    alphabet.forEach(letter => {
+        const btn = document.createElement("button");
+        btn.textContent = letter;
+        btn.classList.add("key-btn");
+        btn.id = "key-" + letter;
+        
+        // Click handler
+        btn.onclick = () => handleGuess(letter);
+        
+        container.appendChild(btn);
+    });
+}
 
-  if (!guess || guess.length !== 1 || !/[a-z]/.test(guess)) {
-    document.getElementById("message").textContent = "Enter a single letter.";
-    return;
-  }
+function handleGuess(letter) {
+    if (Game.isGameOver) return;
+    if (Game.guessedLetters.includes(letter)) return; // Already guessed
 
-  if (guessedLetters.includes(guess)) {
-    document.getElementById("message").textContent = "You already guessed that!";
-    return;
-  }
+    Game.guessedLetters.push(letter);
+    Game.totalGuesses++;
 
-  //count only valid, new guesses
-  totalGuesses += 1;
+    // Find the button and disable it visually
+    const btn = document.getElementById("key-" + letter);
+    if (btn) btn.disabled = true;
 
-  guessedLetters.push(guess);
+    if (Game.chosenWord.includes(letter)) {
+        // Correct
+        if (btn) btn.classList.add("correct");
+        document.getElementById("message").textContent = "Good job!";
+        document.getElementById("message").style.color = "#2E7D32"; // Green
+        resetTimer(); // Reset turn timer on success
+    } else {
+        // Wrong
+        if (btn) btn.classList.add("wrong");
+        Game.wrongGuesses++;
+        document.getElementById("wrongCount").textContent = Game.wrongGuesses;
+        document.getElementById("message").textContent = "Oops, try again!";
+        document.getElementById("message").style.color = "#c62828"; // Red
+        
+        triggerShake();
 
-  if (chosenWord.includes(guess)) {
-    document.getElementById("message").textContent = "Correct!";
-  } else {
-    wrongGuesses++;
-    document.getElementById("wrongCount").textContent = wrongGuesses;
-    document.getElementById("message").textContent = "Not correct, try again.";
-
-    if (wrongGuesses === 2) {
-      const hintBtn = document.getElementById("hintBtn");
-      hintBtn.style.display = "inline";
-      hintBtn.disabled = false;
+        // Enable hint button if needed
+        if (Game.wrongGuesses >= 2) {
+            const hBtn = document.getElementById("hintBtn");
+            hBtn.style.display = "inline";
+            hBtn.disabled = false;
+        }
+        resetTimer(); // Reset turn timer on fail
     }
-  }
 
-  resetCountdown(10);
-  updateWordDisplay();
-  checkGameOver();
-}
-
-function giveHint() {
-  //remaining unrevealed letters (letters only)
-  let remaining = getUnrevealedLetters();
-  if (remaining.length === 0) return;
-
-  const hintLetter = remaining[Math.floor(Math.random() * remaining.length)];
-  if (!guessedLetters.includes(hintLetter)) {
-    guessedLetters.push(hintLetter);
-    hintsUsed += 1;
-  }
-
-  document.getElementById("message").textContent =
-    "Hint: the word contains '" + hintLetter + "'";
-  updateWordDisplay();
-
-  //if hints just revealed everything, trigger a hint-based loss
-  remaining = getUnrevealedLetters();
-  if (getUnrevealedLetters().length > 0) {
-  resetCountdown(10);
-}
-  if (remaining.length === 0) {
-    lostByHints = true;
-    wrongGuesses = maxGuesses;
-    document.getElementById("wrongCount").textContent = wrongGuesses;
+    updateWordDisplay();
     checkGameOver();
-  }
 }
 
-function checkGameOver() {
-  const wordDisplay = document.getElementById("wordDisplay");
-  const hintBtn = document.getElementById("hintBtn");
-  const guessBtn = document.getElementById("guessBtn");
-
-  const solved = !wordDisplay.textContent.includes("_");
-
-  if (wrongGuesses >= maxGuesses) {
-    //show full word at the top
-    wordDisplay.textContent = chosenWord.split("").join(" ");
-
-    document.getElementById("message").textContent = lostByHints
-      ? "You revealed the whole word with hints — you lose! The word was: " + chosenWord
-      : "Game Over! The word was: " + chosenWord;
-
-    lastRoundWon = false;
-    disableGame();
-
-    if (hintBtn) hintBtn.disabled = true;
-    document.getElementById("replayBtn").style.display = "inline";
-    document.getElementById("homeBtn").style.display = "inline";
-    if (guessBtn) guessBtn.disabled = true;
-
-    //save loss
-    saveGameResult({
-      mode: selectedMode || "fun",
-      word: chosenWord,
-      won: false,
-      wrongGuesses,
-      totalGuesses,
-      hintsUsed,
-      durationMs: Date.now() - roundStartAt,
-      lostByHints
-    });
-
-  } else if (solved) {
-    document.getElementById("message").textContent = "You win! The word was: " + chosenWord;
-
-    lastRoundWon = true;
-    disableGame();
-
-    if (hintBtn) hintBtn.disabled = true;
-    document.getElementById("replayBtn").style.display = "inline";
-    document.getElementById("homeBtn").style.display = "inline";
-    if (guessBtn) guessBtn.disabled = true;
-
-    //save win
-    saveGameResult({
-      mode: selectedMode || "fun",
-      word: chosenWord,
-      won: true,
-      wrongGuesses,
-      totalGuesses,
-      hintsUsed,
-      durationMs: Date.now() - roundStartAt,
-      lostByHints: false
-    });
-  }
-}
-function handleTimeoutWrongGuess() {
-  //only do this if the round is active
-  if (wrongGuesses >= maxGuesses) return;
-
-  wrongGuesses++;
-  document.getElementById("wrongCount").textContent = wrongGuesses;
-  document.getElementById("message").textContent = " Time's up! That's a wrong guess.";
-
-  //reveal Hint after 2 wrongs (same as before)
-  if (wrongGuesses === 2) {
-    const hintBtn = document.getElementById("hintBtn");
-    hintBtn.style.display = "inline";
-    hintBtn.disabled = false;
-  }
-
-  updateWordDisplay();
-  if (wrongGuesses >= maxGuesses) {
-    checkGameOver(); //will stop UI & save result
-  } else {
-    //keep playing: restart the 10s window
-    startCountdown();
-  }
+function updateWordDisplay() {
+    let display = "";
+    let solved = true;
+    for (const char of Game.chosenWord) {
+        if (Game.guessedLetters.includes(char)) {
+            display += char + " ";
+        } else {
+            display += "_ ";
+            solved = false;
+        }
+    }
+    document.getElementById("wordDisplay").textContent = display.trim();
+    return solved;
 }
 
-//Timer
-function disableGame() {
-  stopCountdown();
+function triggerShake() {
+    const gameArea = document.getElementById("gameArea");
+    // Remove class -> void reflow -> add class to restart animation
+    gameArea.classList.remove("shake-effect");
+    void gameArea.offsetWidth; 
+    gameArea.classList.add("shake-effect");
+}
 
-  const li = document.getElementById("letterInput");
-  if (li) li.disabled = true;
+/* --- Timer Logic --- */
+function startTimer() {
+    // Starts a fresh 10 second timer
+    stopTimer();
+    Game.timeLeft = 10;
+    updateTimerUI();
+    
+    Game.timerInterval = setInterval(() => {
+        Game.timeLeft--;
+        updateTimerUI();
+        if (Game.timeLeft <= 0) {
+            handleTimeout();
+        }
+    }, 1000);
+}
 
-  const guessBtn = document.getElementById("guessBtn");
-  if (guessBtn) guessBtn.disabled = true;
+function resumeTimer() {
+    // Resumes existing timer (doesn't reset to 10)
+    stopTimer();
+    updateTimerUI();
+    
+    Game.timerInterval = setInterval(() => {
+        Game.timeLeft--;
+        updateTimerUI();
+        if (Game.timeLeft <= 0) {
+            handleTimeout();
+        }
+    }, 1000);
+}
 
-  const hintBtn = document.getElementById("hintBtn");
-  if (hintBtn) hintBtn.disabled = true;
+function stopTimer() {
+    if (Game.timerInterval) {
+        clearInterval(Game.timerInterval);
+        Game.timerInterval = null;
+    }
+}
+
+function resetTimer() {
+    startTimer();
 }
 
 function updateTimerUI() {
-  const el = document.getElementById("timer");
-  if (el) el.textContent = String(Math.max(0, timeLeft));
+    document.getElementById("timer").textContent = Game.timeLeft;
 }
 
-function resetCountdown(seconds = 10) {
-  timeLeft = seconds;
-  updateTimerUI();
-}
-
-function stopCountdown() {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-}
-
-function startCountdown() {
-  stopCountdown();             // safety
-  resetCountdown(10);          // fresh 10 seconds
-  countdownInterval = setInterval(() => {
-    timeLeft -= 1;
-    updateTimerUI();
-    if (timeLeft <= 0) {
-      // time's up -> auto wrong guess
-      stopCountdown();
-      handleTimeoutWrongGuess();
+function handleTimeout() {
+    if (Game.isGameOver) return;
+    document.getElementById("message").textContent = "Time's up! Penalty!";
+    Game.wrongGuesses++;
+    document.getElementById("wrongCount").textContent = Game.wrongGuesses;
+    triggerShake();
+    
+    // Check if that killed them
+    checkGameOver();
+    
+    if (!Game.isGameOver) {
+        resetTimer();
     }
-  }, 1000);
 }
 
+/* --- End Game & Helpers --- */
 
-/*leaderboard*/
-function saveGameResult({ mode, word, won, wrongGuesses, totalGuesses, hintsUsed, durationMs, lostByHints }) {
-  const STORE_KEY = "wtw_scores";
-  const entry = {
-    mode,
-    word,
-    won,
-    wrongGuesses,
-    totalGuesses,
-    hintsUsed,
-    durationMs,
-    lostByHints: !!lostByHints,
-    date: new Date().toISOString()
-  };
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    arr.unshift(entry);
-    if (arr.length > 500) arr.length = 500; // keep tidy
-    localStorage.setItem(STORE_KEY, JSON.stringify(arr));
-  } catch (e) {
-    console.warn("Failed to save result:", e);
-  }
+function checkGameOver() {
+    const isWin = !document.getElementById("wordDisplay").textContent.includes("_");
+    const isLoss = Game.wrongGuesses >= Game.maxGuesses;
+
+    if (isWin || isLoss) {
+        stopTimer();
+        Game.isGameOver = true;
+        
+        // Disable all keys
+        document.querySelectorAll(".key-btn").forEach(b => b.disabled = true);
+        document.getElementById("hintBtn").disabled = true;
+
+        // Show buttons
+        document.getElementById("replayBtn").style.display = "inline";
+        document.getElementById("homeBtn").style.display = "inline";
+
+        if (isWin) {
+            document.getElementById("message").textContent = "YOU WON! The word was: " + Game.chosenWord;
+            document.getElementById("message").style.color = "#2E7D32";
+        } else {
+            document.getElementById("wordDisplay").textContent = Game.chosenWord.split("").join(" ");
+            document.getElementById("message").textContent = Game.lostByHints 
+                ? "Too many hints! You lost." 
+                : "Game Over! The word was: " + Game.chosenWord;
+            document.getElementById("message").style.color = "#c62828";
+        }
+
+        saveGameResult({
+            mode: Game.selectedMode,
+            word: Game.chosenWord,
+            won: isWin,
+            wrongGuesses: Game.wrongGuesses,
+            totalGuesses: Game.totalGuesses,
+            hintsUsed: Game.hintsUsed,
+            durationMs: Date.now() - Game.roundStartAt,
+            lostByHints: Game.lostByHints
+        });
+    }
 }
 
+function giveHint() {
+    const needed = [];
+    for (const char of Game.chosenWord) {
+        if (!Game.guessedLetters.includes(char)) needed.push(char);
+    }
+    
+    if (needed.length === 0) return;
+    
+    const letter = needed[Math.floor(Math.random() * needed.length)];
+    Game.hintsUsed++;
+    
+    handleGuess(letter);
+    document.getElementById("message").textContent = "Hint used! (" + letter + ")";
 
+    const stillNeeded = [];
+    for (const char of Game.chosenWord) {
+        if (!Game.guessedLetters.includes(char)) stillNeeded.push(char);
+    }
+    if (stillNeeded.length === 0) {
+        Game.lostByHints = true;
+        Game.wrongGuesses = Game.maxGuesses; 
+        checkGameOver();
+    }
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-  //enter key submits a guess
-  const li = document.getElementById("letterInput");
-  if (li) {
-    li.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") guessLetter();
-    });
-  }
+function saveGameResult(data) {
+    const STORE_KEY = "wtw_scores";
+    data.date = new Date().toISOString();
+    try {
+        const raw = localStorage.getItem(STORE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        arr.unshift(data);
+        if (arr.length > 500) arr.length = 500;
+        localStorage.setItem(STORE_KEY, JSON.stringify(arr));
+    } catch (e) { console.warn("Save failed", e); }
+}
 
-  //file input listener (school words)
-  const fileEl = document.getElementById("wordFile");
-  if (fileEl) {
-    fileEl.addEventListener("change", function (event) {
-      const file = event.target.files[0];
-      if (!file) return;
+/* --- Navigation & UI --- */
+function selectMode(mode) {
+    if (mode === 'school') {
+        document.getElementById("modeSelect").style.display = "none";
+        document.getElementById("schoolInput").style.display = "block";
+    } else {
+        startGame("fun");
+    }
+}
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const text = e.target.result;
-        customWords = text
-          .split(/\r?\n|,/)
-          .map(w => w.trim().toLowerCase())
-          .filter(w => w.length > 0);
-        document.getElementById("message").textContent = "Words loaded from file!";
-      };
-      reader.readAsText(file);
-    });
-  }
+function goHome() {
+    stopTimer();
+    Game.isGameOver = true;
+    document.getElementById("gameArea").style.display = "none";
+    document.getElementById("schoolInput").style.display = "none";
+    document.getElementById("modeSelect").style.display = "block";
+    
+    Game.customWords = [];
+    document.getElementById("schoolWords").value = "";
+    drawBackground();
+}
 
-  drawBackground();
-});
+function restartGame() {
+    startGame(Game.selectedMode);
+}
 
+function toggleModal(show) {
+    const modal = document.getElementById("instModal");
+    modal.style.display = show ? "block" : "none";
+    
+    if (show) {
+        // Pause timer if opening instructions
+        stopTimer();
+    } else {
+        // Resume timer if closing instructions AND game is active/not over
+        if (!Game.isGameOver && document.getElementById("gameArea").style.display === "block") {
+            resumeTimer();
+        }
+    }
+}
 
-/*double checking if hooks work*/
-window.selectMode  = selectMode;
-window.startGame   = startGame;
-window.guessLetter = guessLetter;
-window.giveHint    = giveHint;
+// Close modal on outside click (and resume timer)
+window.onclick = function(event) {
+    const modal = document.getElementById("instModal");
+    if (event.target === modal) {
+        toggleModal(false);
+    }
+}
+
+// Start
+initGame();
+
+// Expose functions to HTML buttons
+window.selectMode = selectMode;
+window.startGame = startGame;
+window.giveHint = giveHint;
 window.restartGame = restartGame;
-window.goHome      = goHome;
+window.goHome = goHome;
+window.toggleModal = toggleModal;
